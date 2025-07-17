@@ -17,7 +17,7 @@ class ZohoSignController extends Controller
         
         // Get recipient information from request or use defaults
         $recipientName = $request->input('recipient_name', 'John Doe');
-        $recipientEmail = $request->input('recipient_email', 'aliasidiarraibrahima@gmail.com');
+        $recipientEmail = $request->input('recipient_email', 'johndoe@gmail.com');
         $documentName = $request->input('document_name', 'Document for Signature - ' . date('Y-m-d H:i:s'));
 
         // Step 1: Refresh the Access Token
@@ -167,8 +167,8 @@ class ZohoSignController extends Controller
                 'actions' => [
                     [
                         'action_type' => 'SIGN',
-                        'recipient_name' => 'Mohamed BENIAICH',
-                        'recipient_email' => 'mohamedbeniaich00@gmail.com',
+                        'recipient_name' => 'Prenom Nom',
+                        'recipient_email' => 'email@gmail.com',
                         'signing_order' => 0,
                         'verify_recipient' => false,
                         'verification_type' => 'EMAIL'
