@@ -14,4 +14,9 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         //
     ];
+
+    //protected $except = [
+      //  'zoho/document/*/cancel',
+    //];
+
 }

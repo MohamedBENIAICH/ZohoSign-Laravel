@@ -14,10 +14,10 @@ class ZohoSignController extends Controller
         $clientSecret = env('ZOHO_CLIENT_SECRET');
         $refreshToken = env('ZOHO_REFRESH_TOKEN');
         $zohoBaseUrl = env('ZOHO_BASE_URL', 'https://sign.zoho.com');
-        
+
         // Get recipient information from request or use defaults
-        $recipientName = $request->input('recipient_name', 'John Doe');
-        $recipientEmail = $request->input('recipient_email', 'johndoe@gmail.com');
+        $recipientName = $request->input('recipient_name', 'Nom Prenom'); 
+        $recipientEmail = $request->input('recipient_email', 'emailyy@gmail.com');
         $documentName = $request->input('document_name', 'Document for Signature - ' . date('Y-m-d H:i:s'));
 
         // Step 1: Refresh the Access Token
@@ -60,7 +60,7 @@ class ZohoSignController extends Controller
                 ]
             ]
         ];
-        
+
         // Convert to JSON string for the request
         $jsonData = json_encode($requestData);
 
@@ -94,13 +94,13 @@ class ZohoSignController extends Controller
         }
 
         $responseData = $response->json();
-        
+
         // Log the full response for debugging
         \Log::info('Zoho Sign Response:', $responseData);
-        
+
         // Extract the signing URL from the response
         $signingUrl = null;
-        
+
         // Check in the actions array
         if (isset($responseData['requests']['actions']) && is_array($responseData['requests']['actions'])) {
             foreach ($responseData['requests']['actions'] as $action) {
@@ -110,24 +110,24 @@ class ZohoSignController extends Controller
                 }
             }
         }
-        
+
         // Alternative locations for signing URL
         if (!$signingUrl && isset($responseData['requests']['request_url'])) {
             $signingUrl = $responseData['requests']['request_url'];
         }
-        
+
         // If we found a signing URL, redirect to it
         if ($signingUrl) {
             return redirect()->away($signingUrl);
         }
-        
+
         // If we can't find the signing URL, return the full response for debugging
         return response()->json([
             'message' => 'Document sent successfully, but could not find signing URL',
             'response' => $responseData,
         ], 200);
     }
-    
+
     // Alternative method with multiple recipients
     public function sendDocumentMultipleRecipients()
     {
@@ -163,20 +163,20 @@ class ZohoSignController extends Controller
         $requestData = [
             'requests' => [
                 'request_name' => 'Document for Signature - ' . date('Y-m-d H:i:s'),
-                'is_sequential' => false, // Set to true if you want sequential signing
+                'is_sequential' => true, // Set to true if you want sequential signing
                 'actions' => [
                     [
                         'action_type' => 'SIGN',
-                        'recipient_name' => 'Prenom Nom',
-                        'recipient_email' => 'email@gmail.com',
+                        'recipient_name' => 'BENIAICH Mohamed',
+                        'recipient_email' => 'mohamedbeniaich00@gmail.com',
                         'signing_order' => 0,
                         'verify_recipient' => false,
                         'verification_type' => 'EMAIL'
                     ],
                     [
                         'action_type' => 'SIGN',
-                        'recipient_name' => 'Second Signer',
-                        'recipient_email' => 'second@example.com',
+                        'recipient_name' => 'DIARRA Brahim',
+                        'recipient_email' => 'aliasidiarraibrahima@gmail.com',
                         'signing_order' => 1,
                         'verify_recipient' => false,
                         'verification_type' => 'EMAIL'
@@ -184,7 +184,7 @@ class ZohoSignController extends Controller
                 ]
             ]
         ];
-        
+
         $jsonData = json_encode($requestData);
 
         $multipart = [
@@ -218,7 +218,7 @@ class ZohoSignController extends Controller
             'response' => $response->json(),
         ], 200);
     }
-    
+
     // Method to send document to specific recipient via form
     public function sendToRecipient(Request $request)
     {
@@ -228,10 +228,10 @@ class ZohoSignController extends Controller
             'recipient_email' => 'required|email',
             'document_name' => 'nullable|string|max:255'
         ]);
-        
+
         return $this->sendDocument($request);
     }
-    
+
     // Method to send document to multiple specific recipients
     public function sendToMultipleRecipients(Request $request)
     {
@@ -243,12 +243,12 @@ class ZohoSignController extends Controller
             'document_name' => 'nullable|string|max:255',
             'is_sequential' => 'nullable|boolean'
         ]);
-        
+
         $clientId = env('ZOHO_CLIENT_ID');
         $clientSecret = env('ZOHO_CLIENT_SECRET');
         $refreshToken = env('ZOHO_REFRESH_TOKEN');
         $zohoBaseUrl = env('ZOHO_BASE_URL', 'https://sign.zoho.com');
-        
+
         $recipients = $request->input('recipients');
         $documentName = $request->input('document_name', 'Document for Signature - ' . date('Y-m-d H:i:s'));
         $isSequential = $request->input('is_sequential', false);
@@ -297,7 +297,7 @@ class ZohoSignController extends Controller
                 'actions' => $actions
             ]
         ];
-        
+
         $jsonData = json_encode($requestData);
 
         $multipart = [
@@ -331,4 +331,99 @@ class ZohoSignController extends Controller
             'response' => $response->json(),
         ], 200);
     }
+
+
+
+
+    # ----------------------------------------------
+    private function getAccessToken()
+    {
+        $response = Http::asForm()->post('https://accounts.zoho.com/oauth/v2/token', [
+            'refresh_token' => env('ZOHO_REFRESH_TOKEN'),
+            'client_id' => env('ZOHO_CLIENT_ID'),
+            'client_secret' => env('ZOHO_CLIENT_SECRET'),
+            'grant_type' => 'refresh_token',
+        ]);
+
+        if (!$response->ok()) {
+            throw new \Exception('Zoho access token error: ' . $response->body());
+        }
+
+        return $response['access_token'];
+    }
+    public function listSentDocuments()
+    {
+        $accessToken = $this->getAccessToken();
+
+        $response = Http::withToken($accessToken)
+            ->get(env('ZOHO_BASE_URL') . '/api/v1/requests');
+
+        if (!$response->ok()) {
+            return response()->json(['error' => 'Could not fetch documents'], 400);
+        }
+
+        return response()->json($response->json(), 200);
+    }
+public function getDocumentDetails($requestId)
+    {
+        $accessToken = $this->getAccessToken();
+
+        $response = Http::withToken($accessToken)
+            ->get(env('ZOHO_BASE_URL') . "/api/v1/requests/$requestId");
+
+        if (!$response->ok()) {
+            return response()->json(['error' => 'Could not fetch document details'], 400);
+        }
+
+        return response()->json($response->json(), 200);
+    }
+    public function cancelDocument($requestId)
+    {
+        $accessToken = $this->getAccessToken();
+
+        $client = new \GuzzleHttp\Client();
+
+        try {
+            $response = $client->post("https://sign.zoho.com/api/v1/requests/{$requestId}/cancel", [
+                'headers' => [
+                    'Authorization' => "Zoho-oauthtoken {$accessToken}",
+                ],
+                'form_params' => [
+                    'request_id' => $requestId,
+                ],
+            ]);
+
+            $body = json_decode((string) $response->getBody(), true);
+
+            return response()->json($body);
+        } catch (\Exception $e) {
+            // Ajoute ceci pour comprendre ce qui se passe
+            return response()->json([
+                'error' => 'Failed to cancel document',
+                'exception' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function downloadSignedDocument($requestId)
+    {
+        $accessToken = $this->getAccessToken();
+
+        $response = Http::withToken($accessToken)
+            ->get(env('ZOHO_BASE_URL') . "/api/v1/requests/$requestId/download");
+
+        if (!$response->ok()) {
+            return response()->json(['error' => 'Download failed'], 400);
+        }
+
+        return response($response->body(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename=\"signed_document.pdf\"');
+    }
+    public function showDynamicForm()
+    {
+        return view('zoho.dynamic_form');
+    }
+
+
 }
